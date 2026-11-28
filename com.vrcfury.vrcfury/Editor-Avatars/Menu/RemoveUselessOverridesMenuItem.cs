@@ -7,17 +7,11 @@ using VF.Utils;
 
 namespace VF.Menu {
     internal static class RemoveUselessOverridesMenuItem {
-        [MenuItem(MenuItems.uselessOverrides, priority = MenuItems.uselessOverridesPriority)]
-        private static void Run() {
-            VRCFuryBuildContext.Run(() => {
-                Run(MenuUtils.GetSelectedAvatar());
-            });
+        [VFInit]
+        private static void InitHierarchyMenu() {
+            MenuUtils.AddAvatarHierarchyCommand("Cleanup Useless Overrides", obj => VRCFuryBuildContext.Run(() => Run(obj)));
         }
-        [MenuItem(MenuItems.uselessOverrides, true)]
-        private static bool Check() {
-            return MenuUtils.GetSelectedAvatar() != null;
-        }
-        
+
         private static void Run(VFGameObject avatarObj) {
             if (!DialogUtils.DisplayDialog(
                     "Useless Override Cleanup",

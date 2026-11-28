@@ -1,17 +1,21 @@
 using System.Collections.Generic;
-using System.Linq;
 using UnityEditor;
 using UnityEngine;
 using VF.Utils;
 
 namespace VF.Menu {
     internal static class CleanupRedundantObjectReferenceOverridesMenuItem {
-        [MenuItem(MenuItems.cleanupRedundantObjectReferenceOverrides, priority = MenuItems.cleanupRedundantObjectReferenceOverridesPriority)]
-        private static void Run() {
-            VRCFuryBuildContext.Run(() => {
-                var roots = GetSelectedRoots();
-                if (roots.Count == 0) return;
+        [VFInit]
+        private static void InitHierarchyMenu() {
+            MenuItems.AddHierarchyCommand(
+                "Cleanup Redundant Object Reference Overrides",
+                obj => PrefabUtility.IsPartOfPrefabInstance(obj),
+                obj => Run(obj)
+            );
+        }
 
+        private static void Run(VFGameObject root) {
+            VRCFuryBuildContext.Run(() => {
                 if (!DialogUtils.DisplayDialog(
                         "Cleanup Redundant Object Reference Overrides",
                         "This utility will revert prefab overrides in the selected hierarchy when the current value already matches the source prefab value.\n\nContinue?",
@@ -19,10 +23,7 @@ namespace VF.Menu {
                         "Cancel"
                     )) return;
 
-                var reverted = 0;
-                foreach (var root in roots) {
-                    reverted += Cleanup(root);
-                }
+                var reverted = Cleanup(root);
 
                 DialogUtils.DisplayDialog(
                     "Cleanup Redundant Object Reference Overrides",
@@ -30,23 +31,6 @@ namespace VF.Menu {
                     "Ok"
                 );
             });
-        }
-
-        [MenuItem(MenuItems.cleanupRedundantObjectReferenceOverrides, true)]
-        private static bool Validate() {
-            return Selection.gameObjects.Any(go => go != null);
-        }
-
-        private static List<VFGameObject> GetSelectedRoots() {
-            var selected = Selection.gameObjects
-                .Where(go => go != null)
-                .Select(go => go.asVf())
-                .Distinct()
-                .ToList();
-
-            return selected
-                .Where(go => !selected.Any(other => other != go && go.IsSameOrChildOf(other)))
-                .ToList();
         }
 
         private static int Cleanup(VFGameObject root) {

@@ -16,9 +16,14 @@ namespace VF.Builder.Haptics {
         [VFAutowired] private readonly GlobalsService globals;
         [VFAutowired] private readonly TpsDepthAnimationImporter tpsAnimations;
 
+        [VFInit]
+        private static void InitHierarchyMenu() {
+            MenuUtils.AddAvatarHierarchyCommand("Upgrade DPS to SPS", obj => VRCFuryBuildContext.Run(() => Run(obj)));
+        }
+
         [MenuItem(MenuItems.upgradeLegacyHaptics, priority = MenuItems.upgradeLegacyHapticsPriority)]
         private static void MenuRun() {
-            VRCFuryBuildContext.Run(Run);
+            VRCFuryBuildContext.Run(() => Run(MenuUtils.GetSelectedAvatar()));
         }
 
         [MenuItem(MenuItems.upgradeLegacyHaptics, true)]
@@ -29,8 +34,7 @@ namespace VF.Builder.Haptics {
 
         private const string dialogTitle = "SPS Upgrade";
         
-        public static void Run() {
-            var avatarObject = MenuUtils.GetSelectedAvatar();
+        private static void Run(VFGameObject avatarObject) {
             if (avatarObject == null) return;
 
             var upgrader = VRCFuryInjectorBuilder.CreateForManualEditing(avatarObject).GetService<SpsUpgrader>();

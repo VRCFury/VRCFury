@@ -8,17 +8,11 @@ using VF.Utils;
 
 namespace VF.Menu {
     internal static class UnusedBoneCleaner {
-        [MenuItem(MenuItems.unusedBones, priority = MenuItems.unusedBonesPriority)]
-        private static void Run() {
-            VRCFuryBuildContext.Run(() => {
-                Run(MenuUtils.GetSelectedAvatar());
-            });
+        [VFInit]
+        private static void InitHierarchyMenu() {
+            MenuUtils.AddAvatarHierarchyCommand("Nuke unused bones", obj => VRCFuryBuildContext.Run(() => Run(obj)));
         }
-        [MenuItem(MenuItems.unusedBones, true)]
-        private static bool Check() {
-            return MenuUtils.GetSelectedAvatar() != null;
-        }
-        
+
         private static void Run(VFGameObject avatarObj) {
             if (!DialogUtils.DisplayDialog(
                     "Unused Bone Cleanup",

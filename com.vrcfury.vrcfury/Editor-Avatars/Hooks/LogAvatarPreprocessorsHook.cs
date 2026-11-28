@@ -62,7 +62,7 @@ namespace VF.Hooks {
         }
 
         private class Report {
-            public string avatarName;
+            public string avatarPath;
             public readonly List<(string name, double milliseconds, string outcome)> timings =
                 new List<(string name, double milliseconds, string outcome)>();
         }
@@ -71,7 +71,7 @@ namespace VF.Hooks {
 
         private static void Begin(GameObject __0, out Report __state) {
             __state = current;
-            current = Get() ? new Report { avatarName = __0 != null ? __0.name : "(null)" } : null;
+            current = Get() ? new Report { avatarPath = __0 != null ? __0.asVf().GetDebugPath() : "(null)" } : null;
         }
 
         private static void Finish(Report __state) {
@@ -79,7 +79,7 @@ namespace VF.Hooks {
             current = __state;
             if (report == null) return;
             Debug.Log(
-                $"[VRCFury] Avatar preprocessor timings for {report.avatarName}:\n" +
+                $"[VRCFury] Avatar preprocessor timings for {report.avatarPath}:\n" +
                 string.Join("\n", report.timings
                     .OrderByDescending(t => t.milliseconds)
                     .Select(t => $"{t.milliseconds:F2} ms  {t.name}{t.outcome}"))

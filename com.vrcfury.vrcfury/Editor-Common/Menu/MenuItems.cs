@@ -1,13 +1,8 @@
-using System.Collections.Generic;
-using System.Linq;
+using System;
 using UnityEditor;
 using UnityEditor.Compilation;
+using UnityEditor.SceneManagement;
 using UnityEngine;
-using VF.Builder;
-using VF.Component;
-using VF.Exceptions;
-using VF.Model;
-using VF.Utils;
 
 namespace VF.Menu {
     internal static class MenuItems {
@@ -32,16 +27,10 @@ namespace VF.Menu {
         public const int utilitiesPriority = 1311;
         public const string nukeZawoo = utilities + "Nuke Zawoo";
         public const int nukeZawooPriority = utilitiesPriority;
-        public const string unusedBones = utilities + "Nuke unused bones";
-        public const int unusedBonesPriority = utilitiesPriority + 1;
-        public const string listComponents = utilities + "List All Components";
-        public const int listComponentsPriority = utilitiesPriority + 2;
         public const string detectDuplicatePhysbones = utilities + "Detect Duplicate Physbones";
         public const int detectDuplicatePhysbonesPriority = utilitiesPriority + 3;
         public const string reserialize = utilities + "Reserialize All VRCFury Assets";
         public const int reserializePriority = utilitiesPriority + 4;
-        public const string uselessOverrides = utilities + "Cleanup Useless Overrides";
-        public const int uselessOverridesPriority = utilitiesPriority + 5;
         public const string debugCopy = utilities + "Make debug copy during build";
         public const int debugCopyPriority = utilitiesPriority + 6;
         public const string recompileAll = utilities + "Recompile all scripts";
@@ -54,14 +43,10 @@ namespace VF.Menu {
         public const int spsDevModePriority = utilitiesPriority + 10;
         public const string udonCleanerUninstallAgain = utilities + "Re-run Udon Cleaner Uninstall";
         public const int udonCleanerUninstallAgainPriority = utilitiesPriority + 11;
-        public const string cleanupRedundantObjectReferenceOverrides = utilities + "Cleanup Redundant Object Reference Overrides";
-        public const int cleanupRedundantObjectReferenceOverridesPriority = utilitiesPriority + 12;
         public const string applySuperSampledUiMaterialOverrides = utilities + "Apply VRCSuperSampledUIMaterial Overrides";
         public const int applySuperSampledUiMaterialOverridesPriority = utilitiesPriority + 13;
         public const string sceneDirtyLogger = utilities + "Log why Scene is dirtied";
         public const int sceneDirtyLoggerPriority = utilitiesPriority + 14;
-        public const string logExternalSceneReferences = utilities + "Log External Scene References";
-        public const int logExternalSceneReferencesPriority = utilitiesPriority + 15;
         public const string logVfInitTimings = utilities + "Log Timings";
         public const int logVfInitTimingsPriority = utilitiesPriority + 16;
         public const string logAvatarPreprocessors = utilities + "Log Avatar Preprocessors";
@@ -107,60 +92,14 @@ namespace VF.Menu {
         }
 #endif
 
-        [MenuItem(listComponents, priority = listComponentsPriority)]
-        private static void ListChildComponents() {
-            VRCFuryBuildContext.Run(() => {
-                var obj = Selection.activeGameObject.asVf();
-                if (obj == null) return;
-                var list = new List<string>();
-                foreach (var c in obj.GetComponentsInSelfAndChildren()) {
-                    if (c == null || c is Transform) continue;
-                    var type = c.GetType().Name;
-                    if (c is VRCFury vf) {
-                        type += " (" + vf.GetAllFeatures().Select(f => f.GetType().Name).Join(',') + ")";
-                    }
-                    list.Add(type  + " in " + c.owner().GetPath(obj));
-                }
-
-                var output = $"List of components on {obj.GetDebugPath()}:\n" + list.Join('\n');
-                GUIUtility.systemCopyBuffer = output;
-
-                DialogUtils.DisplayDialog(
-                    "Debug",
-                    $"Found {list.Count} components in {obj.name} and copied them to clipboard",
-                    "Ok"
-                );
-            });
-        }
-
-        [MenuItem(reserialize, priority = reserializePriority)]
-        private static void Reserialize() {
-            VRCFuryBuildContext.Run(() => {
-                var doIt = DialogUtils.DisplayDialog(
-                    "VRCFury",
-                    "This is intended for VRCFury developers only, in order to quickly" +
-                    " refresh serialization of all VRCF components in a project." +
-                    "\n\n" +
-                    "THIS WILL LOAD ALL SCENES AND TAKE A LONG TIME!" +
-                    "\n\n" +
-                    "Continue?",
-                    "Ok",
-                    "Cancel"
-                );
-                if (!doIt) return;
-
-                BulkUpgradeUtils.WithAllScenesOpen(() => {
-                    foreach (var vrcf in BulkUpgradeUtils.FindAll<VRCFuryComponent>()) {
-                        vrcf.Upgrade();
-                    }
+        public static void AddHierarchyCommand(string label, Func<GameObject, bool> show, Action<GameObject> run) {
+            SceneHierarchyHooks.addItemsToGameObjectContextMenu += (menu, obj) => {
+                if (obj == null || !show(obj)) return;
+                menu.AddItem(new GUIContent("VRCFury/" + label), false, () => {
+                    if (obj != null) run(obj);
                 });
-
-                DialogUtils.DisplayDialog(
-                    "VRCFury",
-                    $"Done",
-                    "Ok"
-                );
-            });
+            };
         }
+
     }
 }
